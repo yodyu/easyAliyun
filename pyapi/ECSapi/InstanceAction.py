@@ -23,7 +23,7 @@ class InstanceAction(object):
         result = self.client.do_action_with_exception(request)
         return result
 
-    def listInstances(self):
+    def queryInstances(self):
         request = DescribeInstancesRequest.DescribeInstancesRequest()
         result = self.client.do_action_with_exception(request)
         return result
@@ -35,7 +35,7 @@ class InstanceAction(object):
         return result
 
     def deleteInstance(self, instance):
-        #  要求实例状态是stopped
+        # instance status should be stopped
         request = DeleteInstanceRequest.DeleteInstanceRequest()
         request.set_InstanceId(instance.instance_id)
         result = self.client.do_action_with_exception(request)

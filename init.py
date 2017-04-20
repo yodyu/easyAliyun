@@ -1,10 +1,11 @@
 import sys
 from aliyunsdkcore import client
-from configparser import ConfigParser
-from pyapi.ESCapi.Instance import InstanceAction
+from ConfigParser import ConfigParser
+
+from pyapi.ECSapi.InstanceAction import InstanceAction
 from entity.ECSentity.Instance import Instance
-import Network
-import NetworkAction
+from pyapi.ECSapi.NetworkAction import NetworkAction
+from entity.ECSentity.Network import Network
 
 
 def initClient():
@@ -16,13 +17,10 @@ def initClient():
     key_secret = cfp.get('KEY', 'Access_key_secret')
     region = cfp.get('ECS', 'region')
 
-    clt = client.AcsClient(key_id, key_secret, region)
+    return client.AcsClient(key_id, key_secret, region)
 
-    return clt
 
-myclient = initClient()
-
-def start_one_instance(clt):
+def start_one_instance():
     instance = Instance()
     instanceAct = InstanceAction(clt)
     network = Network()
@@ -33,42 +31,72 @@ def start_one_instance(clt):
     instance.instance_id = res.get('InstanceId')
 
     # network ip
-    res = networkAct.AllocateEipAddress(network)
+    res = networkAct.allocateEipAddress(network)
     print (res)
     network.allocation_id = res.get('AllocationId')
 
-    res = network.AssociateEipAddress(instance, network)
+    res = networkAct.associateEipAddress(instance, network)
 
     # start
     res = instanceAct.startInstance(instance)
 
-def delete_one_instance(clt):
-    # list
+
+def get_instance():
+    # insure there is only one instance
     instance = Instance()
     instanceAct = InstanceAction(clt)
-    network = Network()
-    networkAct = NetworkAction(clt)
+    res = instanceAct.queryInstances()
 
-    res = instanceAct.listInstances()
-    # if only one instance
     if res.get('TotalCount') != 1:
-        print('Error: instance total count = %s, not 1, exit ' % res.get('TotalCount'))
+        print('Error: instance total count = %s, not 1, exit' % res.get('TotalCount'))
         sys.exit(1)
 
     ins_dic = res.get('instances').get('instance')[1]
     instance.instance_id = ins_dic.get('InstanceId')
     instance.status = ins_dic.get('Status')
-    # if stop
+
+    return instance
+
+
+def get_network(instance):
+    network = Network()
+    networkAct = NetworkAction(clt)
+
+    res = networkAct.queryEipAddresses(instance)
+
+    if res.get('TotalCount') != 1:
+        print('Error: network total count = %s, not 1, exit' % res.get('TotalCount'))
+        sys.exit(1)
+
+    net_dic = res.get('EipAddresses').get('EipAddress')[1]
+    network.allocation_id = net_dic.get('AllocationId')
+
+    return network
+
+
+def delete_one_instance():
+    networkAct = NetworkAction(clt)
+    # instance
+    instanceAct = InstanceAction(clt)
+    instance = get_instance()
     if instance.status == 'Running':
         instanceAct.stopInstance(instance)
 
     for i in range(1,30):
-        pass
+        instance = get_instance()
+        if instance.status == 'Stopped':
+            break
+    else:
+        print('Error: failed to stop instance')
 
-    # loop to insure  stop
+
+    network = get_network(instance)
+
     instanceAct.deleteInstance(instance)
+    networkAct.releaseEipAddress(network)
 
-    pass
+if __name__ == '__main__':
+    clt = initClient()
 
 
 
