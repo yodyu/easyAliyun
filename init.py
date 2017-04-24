@@ -1,4 +1,6 @@
 import sys
+import argparse
+
 from aliyunsdkcore import client
 from ConfigParser import ConfigParser
 
@@ -6,6 +8,10 @@ from pyapi.ECSapi.InstanceAction import InstanceAction
 from entity.ECSentity.Instance import Instance
 from pyapi.ECSapi.NetworkAction import NetworkAction
 from entity.ECSentity.Network import Network
+
+import script.ssAction
+
+record_file = 'record.json'
 
 
 def initClient():
@@ -36,10 +42,10 @@ def start_one_instance():
     network.allocation_id = res.get('AllocationId')
 
     res = networkAct.associateEipAddress(instance, network)
-
+    print (res)
     # start
     res = instanceAct.startInstance(instance)
-
+    print (res)
 
 def get_instance():
     # insure there is only one instance
@@ -97,6 +103,19 @@ def delete_one_instance():
 
 if __name__ == '__main__':
     clt = initClient()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('action', help='start or delete a ECS instance')
+
+    args = parser.parse_args()
+    action = args.action
+    if action == 'start':
+        start_one_instance()
+        script.ssAction.Shadowsocks.start_ss_server()
+    elif action == 'stop':
+        delete_one_instance()
+
+
 
 
 
