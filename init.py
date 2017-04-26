@@ -1,4 +1,5 @@
 import sys
+import os
 import argparse
 
 from aliyunsdkcore import client
@@ -9,15 +10,17 @@ from entity.ECSentity.Instance import Instance
 from pyapi.ECSapi.NetworkAction import NetworkAction
 from entity.ECSentity.Network import Network
 
-import script.ssAction
+#import script.ssAction
 
 record_file = 'record.json'
 
 
 def initClient():
-    with open('config.ini') as f:
-        cfp = ConfigParser()
-        cfp.read(f)
+    conf = 'config.ini'
+    if not os.path.exists(conf):
+        print 'Err: file config.ini not exists'
+    cfp = ConfigParser()
+    cfp.read(conf)
 
     key_id = cfp.get('KEY', 'Access_key_id')
     key_secret = cfp.get('KEY', 'Access_key_secret')
@@ -33,13 +36,16 @@ def start_one_instance():
     networkAct = NetworkAction(clt)
 
     # create
-    res = instanceAct.createInstance(instance)
-    instance.instance_id = res.get('InstanceId')
+    #res = instanceAct.createInstance(instance)
+    #print res
+    res = '{"InstanceId":"i-bp16tljwj6370h208yma","RequestId":"FB282AD4-8E9E-4668-B85B-7AEE27A6E7C6"}'
+    print res
+    instance.instance_id = eval(res).get('InstanceId')
 
     # network ip
     res = networkAct.allocateEipAddress(network)
     print (res)
-    network.allocation_id = res.get('AllocationId')
+    network.allocation_id = eval(res).get('AllocationId')
 
     res = networkAct.associateEipAddress(instance, network)
     print (res)
@@ -57,7 +63,7 @@ def get_instance():
         print('Error: instance total count = %s, not 1, exit' % res.get('TotalCount'))
         sys.exit(1)
 
-    ins_dic = res.get('instances').get('instance')[1]
+    ins_dic = eval(res).get('instances').get('instance')[1]
     instance.instance_id = ins_dic.get('InstanceId')
     instance.status = ins_dic.get('Status')
 
@@ -74,7 +80,7 @@ def get_network(instance):
         print('Error: network total count = %s, not 1, exit' % res.get('TotalCount'))
         sys.exit(1)
 
-    net_dic = res.get('EipAddresses').get('EipAddress')[1]
+    net_dic = eval(res).get('EipAddresses').get('EipAddress')[1]
     network.allocation_id = net_dic.get('AllocationId')
 
     return network
@@ -105,13 +111,13 @@ if __name__ == '__main__':
     clt = initClient()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', help='start or delete a ECS instance')
+    parser.add_argument('--action', help='start or delete a ECS instance', default='start')
 
     args = parser.parse_args()
     action = args.action
     if action == 'start':
         start_one_instance()
-        script.ssAction.Shadowsocks.start_ss_server()
+        script.ssAction.Shadowsocks().start_ss_server()
     elif action == 'stop':
         delete_one_instance()
 

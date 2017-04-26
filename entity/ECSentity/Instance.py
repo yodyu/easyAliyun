@@ -5,5 +5,5 @@ class Instance(object):
         self.password='cnp200@HW'
         self.instance_type='ecs.xn4.small'
         self.status = None
-        self.eip
+        self.eip = None
 
